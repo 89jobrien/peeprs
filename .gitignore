@@ -5,3 +5,5 @@
 .DS_Store
 .env
 .env.*
+*.md
+!README.md
