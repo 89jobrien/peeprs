@@ -8,6 +8,7 @@ use axum::response::Html;
 use axum::routing::get;
 use axum::{Json, Router};
 use clap::Parser;
+use peeprs::cache::ScanCache;
 use peeprs::models::DashboardSummary;
 use peeprs::parse::{expand_tilde, now_iso};
 use peeprs::scan::build_summary;
@@ -32,14 +33,18 @@ struct Args {
 
     #[arg(long, default_value_t = 5)]
     cache_seconds: u64,
+
+    #[arg(long)]
+    cache_db: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct AppState {
     root: PathBuf,
     refresh_ms: u64,
     cache_seconds: u64,
     cache: Arc<Mutex<SummaryCache>>,
+    scan_cache: Option<Arc<ScanCache>>,
 }
 
 #[derive(Debug, Default)]
@@ -55,11 +60,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let host = args.host.clone();
     let port = args.port;
 
+    let cache_db_path = args
+        .cache_db
+        .map(|p| expand_tilde(&p))
+        .unwrap_or_else(|| root.join(".peeprs.db"));
+
+    let scan_cache = match ScanCache::open(&cache_db_path).await {
+        Ok(c) => {
+            println!("SQLite cache: {}", cache_db_path.display());
+            Some(Arc::new(c))
+        }
+        Err(e) => {
+            eprintln!("Warning: could not open cache DB: {e}");
+            None
+        }
+    };
+
     let state = AppState {
         root,
         refresh_ms: args.refresh_seconds.max(1) * 1000,
         cache_seconds: args.cache_seconds.max(1),
         cache: Arc::new(Mutex::new(SummaryCache::default())),
+        scan_cache,
     };
 
     let app = Router::new()
@@ -99,12 +121,15 @@ async fn summary_handler(
         }
     }
 
-    let summary = build_summary(&state.root).map_err(|err| {
-        (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            format!("failed to build summary: {err}"),
-        )
-    })?;
+    let scan_cache_ref = state.scan_cache.as_deref();
+    let summary = build_summary(&state.root, scan_cache_ref)
+        .await
+        .map_err(|err| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed to build summary: {err}"),
+            )
+        })?;
 
     cache.at = Some(Instant::now());
     cache.summary = Some(summary.clone());

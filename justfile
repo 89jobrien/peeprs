@@ -47,6 +47,10 @@ test-nextest-one name:
 test-integration name:
   cargo test --test {{name}}
 
+# Run benchmarks
+bench:
+  cargo bench
+
 # Run the dashboard server
 run:
   cargo run -- --root ~/logs/claude --host 127.0.0.1 --port 8765

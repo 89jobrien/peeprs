@@ -21,6 +21,11 @@ pub fn render_html(refresh_ms: u64) -> String {
       --json: #40b8ff;
       --text: #f9b266;
       --good: #4bc08c;
+      --warn: #e06c75;
+      --tok-input: #5b8def;
+      --tok-output: #e06c75;
+      --tok-cache-read: #4bc08c;
+      --tok-cache-create: #f9b266;
       --shadow: 0 8px 18px rgba(1, 8, 18, 0.24);
     }
 
@@ -482,6 +487,192 @@ pub fn render_html(refresh_ms: u64) -> String {
       margin-top: 4px;
     }
 
+    .metrics-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .analytics-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .perf-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    @media (max-width: 1020px) {
+      .metrics-row, .perf-row { grid-template-columns: 1fr; }
+      .analytics-row { grid-template-columns: 1fr; }
+    }
+
+    .token-bars {
+      display: grid;
+      align-items: end;
+      height: 160px;
+      gap: 2px;
+      padding-top: 6px;
+    }
+
+    .token-bar-col {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      min-height: 2px;
+    }
+
+    .token-seg {
+      min-height: 1px;
+      opacity: 0.92;
+      transition: opacity 140ms ease;
+    }
+
+    .token-seg:hover { opacity: 1; }
+
+    .token-legend {
+      display: flex;
+      gap: 12px;
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .token-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .token-legend-swatch {
+      width: 8px;
+      height: 8px;
+      border-radius: 1px;
+    }
+
+    .histogram-bars {
+      display: grid;
+      align-items: end;
+      height: 140px;
+      gap: 6px;
+      padding-top: 6px;
+    }
+
+    .histogram-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .histogram-bar {
+      width: 100%;
+      border-radius: 2px 2px 0 0;
+      background: linear-gradient(180deg, var(--accent) 0%, #2f71c5 100%);
+      min-height: 2px;
+      opacity: 0.92;
+      transition: opacity 140ms ease;
+    }
+
+    .histogram-bar:hover { opacity: 1; }
+
+    .histogram-label {
+      font-size: 9px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .histogram-count {
+      font-size: 10px;
+      color: #d7e6fb;
+      font-weight: 600;
+    }
+
+    .timeline-grid {
+      margin-top: 4px;
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 100px repeat(24, 1fr);
+      gap: 2px;
+      margin-bottom: 2px;
+      align-items: center;
+    }
+
+    .timeline-label {
+      font-size: 10px;
+      color: #d7e6fb;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .timeline-cell {
+      height: 14px;
+      border-radius: 1px;
+      background: var(--accent);
+      opacity: 0.06;
+    }
+
+    .timeline-hours {
+      display: grid;
+      grid-template-columns: 100px repeat(24, 1fr);
+      gap: 2px;
+      margin-top: 4px;
+    }
+
+    .timeline-hour-label {
+      font-size: 8px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .cache-donut {
+      width: 104px;
+      height: 104px;
+      border-radius: 50%;
+      position: relative;
+      border: 1px solid var(--line);
+      margin: 0 auto;
+    }
+
+    .cache-donut::after {
+      content: "";
+      position: absolute;
+      inset: 20px;
+      border-radius: 50%;
+      background: var(--card-strong);
+      border: 1px solid var(--line-soft);
+    }
+
+    .error-stack {
+      display: flex;
+      gap: 1px;
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      height: 24px;
+      margin-top: 6px;
+    }
+
+    .error-seg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: #fff;
+      min-width: 24px;
+    }
+
     .agent-tag {
       display: inline-block;
       font-size: 10px;
@@ -529,6 +720,9 @@ pub fn render_html(refresh_ms: u64) -> String {
       <div class="card kpi"><div class="k">Top Session Share</div><div class="v-small" id="top-share">-</div></div>
       <div class="card kpi"><div class="k">Agents</div><div class="v-small" id="agents-count">-</div></div>
       <div class="card kpi"><div class="k">7 Day Events</div><div class="v-small" id="events-7d">-</div></div>
+      <div class="card kpi"><div class="k">Total Tokens</div><div class="v-small" id="total-tokens">-</div></div>
+      <div class="card kpi"><div class="k">Cache Hit Rate</div><div class="v-small" id="cache-hit-rate">-</div></div>
+      <div class="card kpi"><div class="k">Errors</div><div class="v-small" id="total-errors">-</div></div>
     </div>
 
     <div class="main">
@@ -604,6 +798,58 @@ pub fn render_html(refresh_ms: u64) -> String {
         <h2 style="margin-top:14px">Storage by Type</h2>
         <div class="gauge-bar-track" id="storage-gauge"></div>
         <div class="gauge-labels" id="gauge-labels"></div>
+      </div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="card">
+        <h2>Token Usage (Daily)</h2>
+        <div class="token-bars" id="token-bars"></div>
+        <div class="token-legend">
+          <div class="token-legend-item"><div class="token-legend-swatch" style="background:var(--tok-input)"></div> Input</div>
+          <div class="token-legend-item"><div class="token-legend-swatch" style="background:var(--tok-output)"></div> Output</div>
+          <div class="token-legend-item"><div class="token-legend-swatch" style="background:var(--tok-cache-read)"></div> Cache Read</div>
+          <div class="token-legend-item"><div class="token-legend-swatch" style="background:var(--tok-cache-create)"></div> Cache Create</div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Cache Efficiency</h2>
+        <div class="split-grid">
+          <div class="cache-donut" id="cache-donut" style="background:conic-gradient(var(--tok-cache-read) 0deg 180deg, var(--tok-cache-create) 180deg 360deg)">
+            <div class="donut-center" id="cache-donut-center">-</div>
+          </div>
+          <div class="legend" id="cache-legend"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="analytics-row">
+      <div class="card">
+        <h2>Tool Usage (Top 20)</h2>
+        <div class="session-bars" id="tool-bars"></div>
+      </div>
+      <div class="card">
+        <h2>Turn Duration</h2>
+        <div class="histogram-bars" id="duration-histogram"></div>
+        <div class="chart-meta" id="duration-meta"></div>
+      </div>
+      <div class="card">
+        <h2>Error Rate</h2>
+        <div id="error-rate-content"></div>
+      </div>
+    </div>
+
+    <div class="perf-row">
+      <div class="card">
+        <h2>Session Timeline</h2>
+        <div class="timeline-grid" id="session-timeline"></div>
+      </div>
+      <div class="card table-card">
+        <h2>Hook Performance</h2>
+        <table id="hook-table">
+          <thead><tr><th>Command</th><th>Count</th><th>Avg (ms)</th><th>Total (ms)</th></tr></thead>
+          <tbody></tbody>
+        </table>
       </div>
     </div>
 
@@ -816,6 +1062,199 @@ pub fn render_html(refresh_ms: u64) -> String {
       }
     }
 
+    function renderTokenUsage(tokenData) {
+      const daily = (tokenData && tokenData.daily) || [];
+      const items = daily.slice(0, 21).reverse();
+      const root = document.getElementById('token-bars');
+      root.innerHTML = '';
+      if (!items.length) return;
+      const maxTotal = Math.max(...items.map(x =>
+        (x.input_tokens || 0) + (x.output_tokens || 0) + (x.cache_read_tokens || 0) + (x.cache_creation_tokens || 0)
+      ), 1);
+      root.style.gridTemplateColumns = `repeat(${items.length}, minmax(0, 1fr))`;
+      for (const item of items) {
+        const col = document.createElement('div');
+        col.className = 'token-bar-col';
+        const total = (item.input_tokens || 0) + (item.output_tokens || 0) + (item.cache_read_tokens || 0) + (item.cache_creation_tokens || 0);
+        const h = Math.max(2, Math.round((total / maxTotal) * 100));
+        col.style.height = h + '%';
+        col.title = `${item.day}: ${fmtInt(total)} tokens`;
+        const segments = [
+          { val: item.cache_creation_tokens || 0, color: 'var(--tok-cache-create)' },
+          { val: item.cache_read_tokens || 0, color: 'var(--tok-cache-read)' },
+          { val: item.output_tokens || 0, color: 'var(--tok-output)' },
+          { val: item.input_tokens || 0, color: 'var(--tok-input)' },
+        ];
+        for (const seg of segments) {
+          if (seg.val > 0 && total > 0) {
+            const s = document.createElement('div');
+            s.className = 'token-seg';
+            s.style.height = Math.max(1, Math.round((seg.val / total) * 100)) + '%';
+            s.style.background = seg.color;
+            col.appendChild(s);
+          }
+        }
+        root.appendChild(col);
+      }
+    }
+
+    function renderToolUsage(tools) {
+      const items = (tools || []).slice(0, 20);
+      const maxCount = Math.max(...items.map(x => x.count || 0), 1);
+      const totalCount = items.reduce((sum, x) => sum + (x.count || 0), 0);
+      const root = document.getElementById('tool-bars');
+      root.innerHTML = '';
+      for (const item of items) {
+        const pct = Math.max(2, Math.round(((item.count || 0) / maxCount) * 100));
+        const share = totalCount > 0 ? ((item.count || 0) / totalCount) * 100 : 0;
+        const row = document.createElement('div');
+        row.className = 'session-row';
+        row.innerHTML = `
+          <div>
+            <div class="session-name">${item.tool}</div>
+            <div class="session-track"><div class="session-fill" style="width:${pct}%"></div></div>
+          </div>
+          <div class="session-val">${fmtInt(item.count)}</div>
+        `;
+        root.appendChild(row);
+      }
+    }
+
+    function renderDurationHistogram(durData) {
+      const buckets = (durData && durData.buckets) || [];
+      const root = document.getElementById('duration-histogram');
+      const meta = document.getElementById('duration-meta');
+      root.innerHTML = '';
+      meta.innerHTML = '';
+      if (!buckets.length) return;
+      const maxCount = Math.max(...buckets.map(b => b.count || 0), 1);
+      root.style.gridTemplateColumns = `repeat(${buckets.length}, minmax(0, 1fr))`;
+      for (const b of buckets) {
+        const col = document.createElement('div');
+        col.className = 'histogram-col';
+        const bar = document.createElement('div');
+        bar.className = 'histogram-bar';
+        bar.style.height = Math.max(2, Math.round(((b.count || 0) / maxCount) * 100)) + '%';
+        const count = document.createElement('div');
+        count.className = 'histogram-count';
+        count.textContent = fmtInt(b.count);
+        const label = document.createElement('div');
+        label.className = 'histogram-label';
+        label.textContent = b.label;
+        col.appendChild(count);
+        col.appendChild(bar);
+        col.appendChild(label);
+        root.appendChild(col);
+      }
+      const minS = ((durData.min_ms || 0) / 1000).toFixed(1);
+      const maxS = ((durData.max_ms || 0) / 1000).toFixed(1);
+      const avgS = ((durData.avg_ms || 0) / 1000).toFixed(1);
+      meta.innerHTML = `<span>Min: ${minS}s</span><span>Avg: ${avgS}s</span><span>Max: ${maxS}s</span>`;
+    }
+
+    function renderSessionTimeline(timeline) {
+      const items = (timeline || []).slice(0, 8);
+      const root = document.getElementById('session-timeline');
+      root.innerHTML = '';
+      if (!items.length) return;
+      const allHours = items.flatMap(s => s.hours || []);
+      const maxH = Math.max(...allHours, 1);
+      for (const s of items) {
+        const row = document.createElement('div');
+        row.className = 'timeline-row';
+        const label = document.createElement('div');
+        label.className = 'timeline-label';
+        label.textContent = s.session;
+        label.title = s.session;
+        row.appendChild(label);
+        const hours = s.hours || [];
+        for (let h = 0; h < 24; h++) {
+          const cell = document.createElement('div');
+          cell.className = 'timeline-cell';
+          const val = hours[h] || 0;
+          cell.style.opacity = (0.06 + (val / maxH) * 0.9).toFixed(2);
+          cell.title = `${h}:00 - ${fmtInt(val)} events`;
+          row.appendChild(cell);
+        }
+        root.appendChild(row);
+      }
+      const hoursRow = document.createElement('div');
+      hoursRow.className = 'timeline-hours';
+      hoursRow.innerHTML = '<div></div>';
+      for (let h = 0; h < 24; h++) {
+        hoursRow.innerHTML += `<div class="timeline-hour-label">${h}</div>`;
+      }
+      root.appendChild(hoursRow);
+    }
+
+    function renderCacheEfficiency(ce) {
+      const read = (ce && ce.total_cache_read) || 0;
+      const create = (ce && ce.total_cache_creation) || 0;
+      const ratio = (ce && ce.ratio) || 0;
+      const pct = ratio * 100;
+      const deg = (pct / 100) * 360;
+      const donut = document.getElementById('cache-donut');
+      donut.style.background = `conic-gradient(var(--tok-cache-read) 0deg ${deg}deg, var(--tok-cache-create) ${deg}deg 360deg)`;
+      setText('cache-donut-center', fmtPct(pct));
+      const legend = document.getElementById('cache-legend');
+      legend.innerHTML = `
+        <div class="legend-item">
+          <div class="token-legend-swatch" style="background:var(--tok-cache-read)"></div>
+          <div>Cache Read</div>
+          <div>${fmtInt(read)}</div>
+        </div>
+        <div class="legend-item">
+          <div class="token-legend-swatch" style="background:var(--tok-cache-create)"></div>
+          <div>Cache Create</div>
+          <div>${fmtInt(create)}</div>
+        </div>
+      `;
+    }
+
+    function renderErrorRate(er) {
+      const root = document.getElementById('error-rate-content');
+      root.innerHTML = '';
+      const apiErr = (er && er.api_errors) || 0;
+      const toolErr = (er && er.tool_errors) || 0;
+      const total = (er && er.total_events) || 0;
+      const apiRate = (er && er.api_error_rate) || 0;
+      const toolRate = (er && er.tool_error_rate) || 0;
+
+      root.innerHTML = `
+        <div style="display:grid;gap:8px;margin-top:4px">
+          <div style="display:flex;justify-content:space-between;font-size:12px">
+            <span style="color:var(--muted)">API Errors</span>
+            <span style="color:var(--warn);font-weight:600">${fmtInt(apiErr)} (${fmtPct(apiRate * 100)})</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px">
+            <span style="color:var(--muted)">Tool Errors</span>
+            <span style="color:var(--tok-cache-create);font-weight:600">${fmtInt(toolErr)} (${fmtPct(toolRate * 100)})</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px">
+            <span style="color:var(--muted)">Total Events</span>
+            <span>${fmtInt(total)}</span>
+          </div>
+        </div>
+        <div class="error-stack">
+          ${total > 0 ? `
+            <div class="error-seg" style="flex:${Math.max(apiErr,1)};background:var(--warn)">${apiErr > 0 ? fmtInt(apiErr) : ''}</div>
+            <div class="error-seg" style="flex:${Math.max(toolErr,1)};background:var(--tok-cache-create)">${toolErr > 0 ? fmtInt(toolErr) : ''}</div>
+            <div class="error-seg" style="flex:${Math.max(total - apiErr - toolErr,1)};background:var(--good)">${total - apiErr - toolErr > 0 ? 'OK' : ''}</div>
+          ` : '<div class="error-seg" style="flex:1;background:var(--line)">No data</div>'}
+        </div>
+      `;
+    }
+
+    function renderHookPerformance(hooks) {
+      const tbody = document.querySelector('#hook-table tbody');
+      tbody.innerHTML = '';
+      for (const item of hooks || []) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td style="font-size:11px;word-break:break-all">${item.command}</td><td>${fmtInt(item.count)}</td><td>${fmtInt(item.avg_ms)}</td><td>${fmtInt(item.total_ms)}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
     function renderDerived(data) {
       const totals = data.totals || {};
       const days = Math.max(1, totals.days || 0);
@@ -830,6 +1269,16 @@ pub fn render_html(refresh_ms: u64) -> String {
       setText('top-share', fmtPct(events > 0 ? (top / events) * 100 : 0));
       setText('agents-count', fmtInt(agentCount));
       setText('events-7d', fmtInt(events7d));
+
+      const tu = data.token_usage || {};
+      const totalTokens = (tu.total_input || 0) + (tu.total_output || 0) + (tu.total_cache_read || 0) + (tu.total_cache_creation || 0);
+      setText('total-tokens', fmtInt(totalTokens));
+
+      const ce = data.cache_efficiency || {};
+      setText('cache-hit-rate', fmtPct((ce.ratio || 0) * 100));
+
+      const er = data.error_rate || {};
+      setText('total-errors', fmtInt((er.api_errors || 0) + (er.tool_errors || 0)));
     }
 
     function renderStorageTrend(days) {
@@ -981,6 +1430,13 @@ pub fn render_html(refresh_ms: u64) -> String {
         renderTypeDistribution(data.types || {});
         renderStorageGauge(data.types || {});
         renderHeatmap(data.days || []);
+        renderTokenUsage(data.token_usage || {});
+        renderToolUsage(data.tool_usage || []);
+        renderDurationHistogram(data.turn_durations || {});
+        renderSessionTimeline(data.session_timeline || []);
+        renderCacheEfficiency(data.cache_efficiency || {});
+        renderErrorRate(data.error_rate || {});
+        renderHookPerformance(data.hook_performance || []);
 
         const newest = data.totals.newest_file_mtime || 'n/a';
         setText('foot', `Updated ${shortTs(data.generated_at)}. Newest file mtime: ${shortTs(newest)}.`);

@@ -3,7 +3,7 @@ use std::time::SystemTime;
 
 use chrono::{DateTime, TimeZone, Utc};
 
-use crate::models::{EventFile, ParsedEventLine};
+use crate::models::{EventFile, HookInfo, ParsedEventLine, TokenUsage};
 
 pub fn looks_like_day(value: &str) -> bool {
     if value.len() != 10 {
@@ -176,6 +176,89 @@ pub fn compact_preview(value: &str, max_chars: usize) -> String {
     format!("{short}...")
 }
 
+pub fn extract_token_usage(value: &serde_json::Value) -> Option<TokenUsage> {
+    let usage = value.get("message")?.get("usage")?;
+    Some(TokenUsage {
+        input_tokens: usage.get("input_tokens").and_then(|v| v.as_i64()).unwrap_or(0),
+        output_tokens: usage.get("output_tokens").and_then(|v| v.as_i64()).unwrap_or(0),
+        cache_read_input_tokens: usage
+            .get("cache_read_input_tokens")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0),
+        cache_creation_input_tokens: usage
+            .get("cache_creation_input_tokens")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0),
+    })
+}
+
+pub fn extract_model(value: &serde_json::Value) -> Option<String> {
+    value
+        .get("message")?
+        .get("model")?
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+}
+
+pub fn extract_tool_uses(value: &serde_json::Value) -> Vec<String> {
+    let content = match value.get("message").and_then(|m| m.get("content")).and_then(|c| c.as_array()) {
+        Some(arr) => arr,
+        None => return Vec::new(),
+    };
+    content
+        .iter()
+        .filter(|item| item.get("type").and_then(|t| t.as_str()) == Some("tool_use"))
+        .filter_map(|item| item.get("name").and_then(|n| n.as_str()).map(|s| s.to_string()))
+        .collect()
+}
+
+pub fn extract_turn_duration(value: &serde_json::Value) -> Option<i64> {
+    if value.get("subtype").and_then(|s| s.as_str()) != Some("turn_duration") {
+        return None;
+    }
+    value.get("durationMs").and_then(|v| v.as_i64())
+}
+
+pub fn extract_hook_infos(value: &serde_json::Value) -> Vec<HookInfo> {
+    if value.get("subtype").and_then(|s| s.as_str()) != Some("stop_hook_summary") {
+        return Vec::new();
+    }
+    let infos = match value.get("hookInfos").and_then(|v| v.as_array()) {
+        Some(arr) => arr,
+        None => return Vec::new(),
+    };
+    infos
+        .iter()
+        .filter_map(|item| {
+            let command = item.get("command").and_then(|c| c.as_str())?.to_string();
+            let duration_ms = item.get("durationMs").and_then(|d| d.as_i64()).unwrap_or(0);
+            Some(HookInfo {
+                command,
+                duration_ms,
+            })
+        })
+        .collect()
+}
+
+pub fn extract_is_api_error(value: &serde_json::Value) -> bool {
+    value
+        .get("isApiErrorMessage")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+}
+
+pub fn extract_is_tool_error(value: &serde_json::Value) -> bool {
+    let content = match value.get("message").and_then(|m| m.get("content")).and_then(|c| c.as_array()) {
+        Some(arr) => arr,
+        None => return false,
+    };
+    content.iter().any(|item| {
+        item.get("type").and_then(|t| t.as_str()) == Some("tool_result")
+            && item.get("is_error").and_then(|v| v.as_bool()).unwrap_or(false)
+    })
+}
+
 pub fn parse_event_line(line: &str, event_file: &EventFile) -> Option<ParsedEventLine> {
     let value: serde_json::Value = serde_json::from_str(line).ok()?;
     let timestamp = extract_event_timestamp(&value);
@@ -187,6 +270,13 @@ pub fn parse_event_line(line: &str, event_file: &EventFile) -> Option<ParsedEven
     let agent = extract_event_agent(&value);
     let event_type = extract_event_type(&value, &event_file.channel);
     let preview = extract_event_preview(&value);
+    let token_usage = extract_token_usage(&value);
+    let model = extract_model(&value);
+    let tool_uses = extract_tool_uses(&value);
+    let turn_duration_ms = extract_turn_duration(&value);
+    let hook_infos = extract_hook_infos(&value);
+    let is_api_error = extract_is_api_error(&value);
+    let is_tool_error = extract_is_tool_error(&value);
 
     Some(ParsedEventLine {
         session,
@@ -195,6 +285,13 @@ pub fn parse_event_line(line: &str, event_file: &EventFile) -> Option<ParsedEven
         preview,
         timestamp_ms,
         timestamp_display,
+        token_usage,
+        model,
+        tool_uses,
+        turn_duration_ms,
+        hook_infos,
+        is_api_error,
+        is_tool_error,
     })
 }
 

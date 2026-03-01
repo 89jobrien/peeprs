@@ -4,12 +4,12 @@ use std::path::PathBuf;
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use tempfile::TempDir;
 
-use peeprs::models::{EventFile, RecentEventAccum, RecentEvent};
+use peeprs::models::{EventFile, RecentEvent, RecentEventAccum};
 use peeprs::parse::{compact_preview, parse_event_line};
 use peeprs::scan::{build_summary, insert_recent_event, scan_event_lines};
 use peeprs::template::render_html;
 
-const VALID_JSON_LINE: &str = r#"{"timestamp":"2025-06-01T12:00:00.000Z","session":"sess-abc123","type":"assistant","message":{"content":"Hello world, this is a test event with some content for benchmarking purposes."}}"#;
+const VALID_JSON_LINE: &str = r#"{"timestamp":"2025-06-01T12:00:00.000Z","session":"sess-abc123","type":"assistant","message":{"content":[{"type":"text","text":"Hello world, this is a test event with some content for benchmarking purposes."},{"type":"tool_use","name":"Read","input":{}}],"usage":{"input_tokens":500,"output_tokens":200,"cache_read_input_tokens":1000,"cache_creation_input_tokens":50},"model":"claude-3-opus-20240229"}}"#;
 
 const INVALID_LINE: &str = "this is not valid json at all {{{";
 
@@ -51,8 +51,7 @@ fn bench_scan_event_lines(c: &mut Criterion) {
             b.iter(|| {
                 let cursor = Cursor::new(data.as_bytes());
                 let reader = std::io::BufReader::new(cursor);
-                let mut pool = Vec::new();
-                scan_event_lines(reader, black_box(&ef), &mut pool).unwrap()
+                scan_event_lines(reader, black_box(&ef)).unwrap()
             })
         });
     }
@@ -81,8 +80,9 @@ fn bench_build_summary(c: &mut Criterion) {
         }
     }
 
+    let rt = tokio::runtime::Runtime::new().unwrap();
     c.bench_function("build_summary", |b| {
-        b.iter(|| build_summary(black_box(root)).unwrap())
+        b.iter(|| rt.block_on(build_summary(black_box(root), None)).unwrap())
     });
 }
 

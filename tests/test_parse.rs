@@ -4,6 +4,187 @@ use std::time::SystemTime;
 use peeprs::models::EventFile;
 use peeprs::parse::*;
 
+// --- extract_token_usage ---
+
+#[test]
+fn test_extract_token_usage_present() {
+    let val = serde_json::json!({
+        "message": {
+            "usage": {
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "cache_read_input_tokens": 200,
+                "cache_creation_input_tokens": 30
+            }
+        }
+    });
+    let tu = extract_token_usage(&val).unwrap();
+    assert_eq!(tu.input_tokens, 100);
+    assert_eq!(tu.output_tokens, 50);
+    assert_eq!(tu.cache_read_input_tokens, 200);
+    assert_eq!(tu.cache_creation_input_tokens, 30);
+}
+
+#[test]
+fn test_extract_token_usage_missing() {
+    let val = serde_json::json!({"message": {"content": "hi"}});
+    assert!(extract_token_usage(&val).is_none());
+}
+
+#[test]
+fn test_extract_token_usage_partial() {
+    let val = serde_json::json!({
+        "message": {
+            "usage": {
+                "input_tokens": 100,
+                "output_tokens": 50
+            }
+        }
+    });
+    let tu = extract_token_usage(&val).unwrap();
+    assert_eq!(tu.input_tokens, 100);
+    assert_eq!(tu.cache_read_input_tokens, 0);
+}
+
+// --- extract_model ---
+
+#[test]
+fn test_extract_model_present() {
+    let val = serde_json::json!({"message": {"model": "claude-3-opus-20240229"}});
+    assert_eq!(extract_model(&val).unwrap(), "claude-3-opus-20240229");
+}
+
+#[test]
+fn test_extract_model_missing() {
+    let val = serde_json::json!({"message": {"content": "hi"}});
+    assert!(extract_model(&val).is_none());
+}
+
+#[test]
+fn test_extract_model_empty() {
+    let val = serde_json::json!({"message": {"model": ""}});
+    assert!(extract_model(&val).is_none());
+}
+
+// --- extract_tool_uses ---
+
+#[test]
+fn test_extract_tool_uses_present() {
+    let val = serde_json::json!({
+        "message": {
+            "content": [
+                {"type": "text", "text": "hello"},
+                {"type": "tool_use", "name": "Read", "input": {}},
+                {"type": "tool_use", "name": "Write", "input": {}}
+            ]
+        }
+    });
+    let tools = extract_tool_uses(&val);
+    assert_eq!(tools, vec!["Read", "Write"]);
+}
+
+#[test]
+fn test_extract_tool_uses_none() {
+    let val = serde_json::json!({"message": {"content": "text"}});
+    assert!(extract_tool_uses(&val).is_empty());
+}
+
+// --- extract_turn_duration ---
+
+#[test]
+fn test_extract_turn_duration_present() {
+    let val = serde_json::json!({"subtype": "turn_duration", "durationMs": 5000});
+    assert_eq!(extract_turn_duration(&val), Some(5000));
+}
+
+#[test]
+fn test_extract_turn_duration_wrong_subtype() {
+    let val = serde_json::json!({"subtype": "other", "durationMs": 5000});
+    assert!(extract_turn_duration(&val).is_none());
+}
+
+#[test]
+fn test_extract_turn_duration_missing_subtype() {
+    let val = serde_json::json!({"durationMs": 5000});
+    assert!(extract_turn_duration(&val).is_none());
+}
+
+// --- extract_hook_infos ---
+
+#[test]
+fn test_extract_hook_infos_present() {
+    let val = serde_json::json!({
+        "subtype": "stop_hook_summary",
+        "hookInfos": [
+            {"command": "lint-hook", "durationMs": 120},
+            {"command": "audit-hook", "durationMs": 45}
+        ]
+    });
+    let infos = extract_hook_infos(&val);
+    assert_eq!(infos.len(), 2);
+    assert_eq!(infos[0].command, "lint-hook");
+    assert_eq!(infos[0].duration_ms, 120);
+    assert_eq!(infos[1].command, "audit-hook");
+}
+
+#[test]
+fn test_extract_hook_infos_wrong_subtype() {
+    let val = serde_json::json!({"subtype": "other", "hookInfos": []});
+    assert!(extract_hook_infos(&val).is_empty());
+}
+
+// --- extract_is_api_error ---
+
+#[test]
+fn test_extract_is_api_error_true() {
+    let val = serde_json::json!({"isApiErrorMessage": true});
+    assert!(extract_is_api_error(&val));
+}
+
+#[test]
+fn test_extract_is_api_error_false() {
+    let val = serde_json::json!({"isApiErrorMessage": false});
+    assert!(!extract_is_api_error(&val));
+}
+
+#[test]
+fn test_extract_is_api_error_missing() {
+    let val = serde_json::json!({});
+    assert!(!extract_is_api_error(&val));
+}
+
+// --- extract_is_tool_error ---
+
+#[test]
+fn test_extract_is_tool_error_present() {
+    let val = serde_json::json!({
+        "message": {
+            "content": [
+                {"type": "tool_result", "is_error": true, "content": "failed"}
+            ]
+        }
+    });
+    assert!(extract_is_tool_error(&val));
+}
+
+#[test]
+fn test_extract_is_tool_error_no_error() {
+    let val = serde_json::json!({
+        "message": {
+            "content": [
+                {"type": "tool_result", "is_error": false, "content": "ok"}
+            ]
+        }
+    });
+    assert!(!extract_is_tool_error(&val));
+}
+
+#[test]
+fn test_extract_is_tool_error_missing() {
+    let val = serde_json::json!({"message": {"content": "text"}});
+    assert!(!extract_is_tool_error(&val));
+}
+
 // --- looks_like_day ---
 
 #[test]

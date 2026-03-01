@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use peeprs::models::{DashboardSummary, ParsedEventLine, Totals, TypeBuckets};
+use peeprs::models::{
+    CacheEfficiency, DashboardSummary, ErrorRate, ParsedEventLine, TokenUsageSummary,
+    Totals, TurnDurationSummary, TypeBuckets,
+};
 
 #[test]
 fn test_dashboard_summary_serializes() {
@@ -13,11 +16,25 @@ fn test_dashboard_summary_serializes() {
         top_sessions: vec![],
         recent_events: vec![],
         agents: HashMap::new(),
+        token_usage: TokenUsageSummary::default(),
+        tool_usage: vec![],
+        turn_durations: TurnDurationSummary::default(),
+        session_timeline: vec![],
+        cache_efficiency: CacheEfficiency::default(),
+        error_rate: ErrorRate::default(),
+        hook_performance: vec![],
     };
     let json = serde_json::to_string(&summary).unwrap();
     let round_trip: serde_json::Value = serde_json::from_str(&json).unwrap();
     assert_eq!(round_trip["root"], "/tmp/logs");
     assert_eq!(round_trip["generated_at"], "2026-01-01T00:00:00.000Z");
+    assert!(round_trip["token_usage"].is_object());
+    assert!(round_trip["tool_usage"].is_array());
+    assert!(round_trip["turn_durations"].is_object());
+    assert!(round_trip["session_timeline"].is_array());
+    assert!(round_trip["cache_efficiency"].is_object());
+    assert!(round_trip["error_rate"].is_object());
+    assert!(round_trip["hook_performance"].is_array());
 }
 
 #[test]
@@ -40,6 +57,13 @@ fn test_parsed_event_line_to_recent_event_some() {
         preview: "hello".to_string(),
         timestamp_ms: Some(1700000000000),
         timestamp_display: Some("2023-11-14T22:13:20.000Z".to_string()),
+        token_usage: None,
+        model: None,
+        tool_uses: vec![],
+        turn_duration_ms: None,
+        hook_infos: vec![],
+        is_api_error: false,
+        is_tool_error: false,
     };
     let result = parsed.to_recent_event();
     assert!(result.is_some());
@@ -60,6 +84,13 @@ fn test_parsed_event_line_to_recent_event_none() {
         preview: "hello".to_string(),
         timestamp_ms: None,
         timestamp_display: None,
+        token_usage: None,
+        model: None,
+        tool_uses: vec![],
+        turn_duration_ms: None,
+        hook_infos: vec![],
+        is_api_error: false,
+        is_tool_error: false,
     };
     assert!(parsed.to_recent_event().is_none());
 }
